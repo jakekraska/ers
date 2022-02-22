@@ -6,6 +6,8 @@ The "data_cleaned.csv" file is a cleaned subset of data from the myPersonality P
 
 ## Abstract
 
+Previous research has not analysed how extreme response style (ERS) is influenced by personality and cultural dimensions in tandem. This study investigated the contribution of personality traits and cultural dimensions to ERS, while controlling for the effects of age and gender. Participant data regarding gender, age, country, and 100 IPIP NEO-PI-R items was extracted from the myPersonality Project (n = 174,059) and analysed using multilevel modelling (MLM) to determine which variables best predicted ERS. Five models (fixed effects were age, gender, Holfstede’s cultural  dimensions, and/or FFM personality domains) were compared. Although all models were significant, personality factors were found to predict ERS more strongly than (1) age and gender and (2) cultural dimensions. Considerations for clinicians and researchers are discussed.
+
 ## Authors and Contributions
 
 Anna Klar: Conceptualization, Investigation, Writing – Original Draft. 
