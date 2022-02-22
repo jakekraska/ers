@@ -4,14 +4,20 @@ library(haven)
 library(tidyverse)
 library(lme4)
 
-### load data ###
+### load data - cleaned data available on github ###
 
-data <- read_sav("data.sav")
-names(data) <- tolower(names(data))
-data <- select(data, userid, gender, age, country, paste(c(outer(c("o","c","e","a","n"),1:20,paste0))), o, c, e, a, n, pdi, idv, mas, unc, lto, ind, erstot)
-data <- na.omit(data)
-data <- unique(data)
-data <- data[data$country != "", ]
+if (file.exists("data_cleaned.csv")) {
+  data <- read.csv("data_cleaned.csv")
+} else {
+  data <- read_sav("data.sav")
+  names(data) <- tolower(names(data))
+  data <- select(data, userid, gender, age, country, paste(c(outer(c("o","c","e","a","n"),1:20,paste0))), o, c, e, a, n, pdi, idv, mas, unc, lto, ind, erstot)
+  data <- na.omit(data)
+  data <- unique(data)
+  data <- data[data$country != "", ]
+  
+  write.csv(data, "data_cleaned.csv")
+}
 
 data$userid <- as.factor(data$userid)
 data$gender <- factor(data$gender, levels=c(0,1), labels=c("Male","Female"))
@@ -19,7 +25,7 @@ data$country <- as.factor(data$country)
 
 demographics <- select(data, userid, gender, age, country)
 ipip <- select(data, userid, paste(c(outer(c("o","c","e","a","n"),1:20,paste0))), o, c, e, a, n)
-ers <- select(data, userid, ers_tot1, ers_tot2, erstot)
+ers <- select(data, userid, erstot)
 culture <- select(data, userid, country, pdi, idv, mas, unc, lto, ind)
 
 ope <- select(data, userid, paste0("o",1:20))
