@@ -1,0 +1,3 @@
+gender,n,Age (Mean),Age (SD),ERS (Mean),ERS (SD)
+Male,80919,25.07,7.01,33.83,15.48
+Female,92491,26.08,7.86,33.31,15.02
