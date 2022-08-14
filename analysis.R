@@ -20,10 +20,12 @@ if (file.exists("data_cleaned.csv")) {
   
   write.csv(data, "data_cleaned.csv", row.names = FALSE)
   
-  # will need to rename some countries to be consistent between csv
+  # will need to rename some countries manually to be consistent between csv
   # Hong Kong, Iran, Russian, Northern Ireland, Scotland, South Korea,
   # Taiwain, Trinidad and Tobago, United Arab Emirates
   # Venezuela, Wales
+  
+  # Note that OCEAN have been keyed, summed, and divided by 20
   
 }
 
@@ -39,12 +41,24 @@ data <- left_join(x = data, y = bw.scores, by = "country")
 
 #### Add GDP Data ####
 
-#gdppc <- read_csv(file = "gdppc2020.csv", col_names = c("country","gdppc","gdppc_thous"))
-#data <- left_join(x = data, y = gdppc, by = "country")
+gdppc <- read_csv(file = "gdppc2020.csv")
+data <- left_join(x = data, y = gdppc, by = "country")
 
 #### Remove Rows With Missing Data ####
 
 data <- na.omit(data)
+
+#### Remove Duplicate Attempts ####
+
+data <- data %>% group_by(userid) %>% slice(1) %>% ungroup()
+
+#### Revert OCEAN Scale ####
+
+data$o <- data$o * 20
+data$c <- data$c * 20
+data$e <- data$e * 20
+data$a <- data$a * 20
+data$n <- data$n * 20
 
 #### Create Factors ####
 
@@ -53,36 +67,16 @@ data$gender <- factor(data$gender, levels=c(0,1), labels=c("Male","Female"))
 data$country <- as.factor(data$country)
 data$continent <- as.factor(data$continent)
 
-#### Select Data ####
-
-demographics <- select(data, userid, gender, age, country, continent, erstot)
-ipip <- select(data, userid, paste(c(outer(c("o","c","e","a","n"),1:20,paste0))), o, c, e, a, n, erstot)
-ers <- select(data, userid, erstot)
-h.culture <- select(data, userid, country, pdi, idv, mas, unc, lto, ind, erstot)
-bw.culture <- select(data, userid, country, col.ind, dut.joy, dis.tru, erstot)
-
-ope <- select(data, userid, paste0("o",1:20))
-con <- select(data, userid, paste0("c",1:20))
-ext <- select(data, userid, paste0("e",1:20))
-agr <- select(data, userid, paste0("a",1:20))
-neu <- select(data, userid, paste0("n",1:20))
-
 #### Demographics ####
 
-sum(table(demographics$userid) > 1)
-sum(table(demographics$userid) > 2)
-median(table(demographics$userid))
-mean(table(demographics$userid))
-
-unique(demographics) %>%
-  distinct(userid, .keep_all = TRUE) %>%
+data %>%
   summarise("n" = n(),
             "Age (Mean)" = mean(age),
             "Age (SD)" = sd(age),
             "Gender (% female)" = sum(gender == "Female")/n*100,
             "Gender (% male)" = sum(gender == "Male")/n*100)
 
-length(unique(demographics$country))
+length(unique(data$country))
 
 ggplot(data, aes(x = gender, y = erstot)) +
   geom_boxplot()
@@ -91,8 +85,7 @@ ggplot(data, aes(x = age, y = erstot)) +
   geom_point() + 
   geom_smooth(method = "lm")
 
-unique(demographics) %>%
-  distinct(userid, .keep_all = TRUE) %>%
+data %>%
   group_by(country) %>%
   summarise("n" = n(),
             "Age (Mean)" = round(mean(age), digits = 2),
@@ -103,8 +96,7 @@ unique(demographics) %>%
             "ERS (SD)" = round(sd(erstot), digits = 2)) %>%
   write.table(file = "countries.txt", sep = ",", quote = FALSE, row.names = FALSE)
   
-unique(demographics) %>%
-  distinct(userid, .keep_all = TRUE) %>%
+data %>%
   group_by(continent) %>%
   summarise("n" = n(),
             "Age (Mean)" = round(mean(age), digits = 2),
@@ -115,8 +107,7 @@ unique(demographics) %>%
             "ERS (SD)" = round(sd(erstot), digits = 2)) %>%
   write.table(file = "continents.txt", sep = ",", quote = FALSE, row.names = FALSE)
 
-unique(demographics) %>%
-  distinct(userid, .keep_all = TRUE) %>%
+data %>%
   group_by(gender) %>%
   summarise("n" = n(),
             "Age (Mean)" = round(mean(age), digits = 2),
@@ -125,63 +116,138 @@ unique(demographics) %>%
             "ERS (SD)" = round(sd(erstot), digits = 2)) %>%
   write.table(file = "genders.txt", sep = ",", quote = FALSE, row.names = FALSE)
 
+#### GDP and ERS ####
+
+ggplot(data, aes(x = gdppc, y = erstot)) +
+  geom_point() + 
+  geom_smooth(method = "lm")
+
+#### GDP and FFM ####
+
+for (i in c("o","c","e","a","n")) {
+  g <- ggplot(data, aes_string(x = "gdppc", y = i)) +
+    geom_point() + 
+    geom_smooth(method = "lm")
+  print(g)
+}
+
+#### GDP and Cultural Values ####
+
+for (i in c("pdi","idv","mas","unc","lto","ind")) {
+  g <- ggplot(data, aes_string(x = "gdppc", y = i)) +
+    geom_point() + 
+    geom_smooth(method = "lm")
+  print(g)
+}
+
+#### FFM and Cultural Values ####
+
+for (x in c("o","c","e","a","n")) {
+  for (y in c("pdi","idv","mas","unc","lto","ind")) {
+    g <- ggplot(data, aes_string(x = x, y = y)) +
+      geom_point() + 
+      geom_smooth(method = "lm")
+    print(g)
+  }
+}
+
 #### Alpha ####
 
-psych::alpha(ope[2:21])
-psych::alpha(con[2:21])
-psych::alpha(ext[2:21])
-psych::alpha(agr[2:21])
-psych::alpha(neu[2:21])
+psych::alpha(select(data, paste0("o",1:20)))
+psych::alpha(select(data, paste0("c",1:20)))
+psych::alpha(select(data, paste0("e",1:20)))
+psych::alpha(select(data, paste0("a",1:20)))
+psych::alpha(select(data, paste0("n",1:20)))
 
 #### Descriptives ####
 
-psych::describe(select(data, gender, age, o, c, e, a, n, pdi, idv, mas, unc, lto, ind, col.ind, dut.joy, dis.tru, erstot)) %>%
+data %>%
+  mutate(gender = as.integer(gender)) %>%
+  select(age, gender, o, c, e, a, n, pdi, idv, mas, unc, lto, ind, col.ind, dut.joy, dis.tru, erstot) %>%
+  psych::describe() %>%
   select(-vars,-n) %>%
   round(digits = 2) %>%
   write.table(file = "descriptives.txt", sep = ",", quote = FALSE, row.names = TRUE)
 
 #### Correlations ####
 
-correlate(select(data, age, o, c, e, a, n, pdi, idv, mas, unc, lto, ind, col.ind, dut.joy, dis.tru, erstot)) %>%
+data %>%
+  mutate(gender = as.integer(gender)) %>%
+  select(gdppc_thous, age, gender, o, c, e, a, n, pdi, idv, mas, unc, lto, ind, col.ind, dut.joy, dis.tru, erstot) %>%
+  correlate() %>%
   shave() %>%
   mutate_if(is.numeric, round, 2) %>%
   write.table(file = "correlations.txt", sep = ",", quote = FALSE, row.names = TRUE)
 
+#### effect sizes  function ####
+
+# https://rdrr.io/cran/lme4/man/fixef.html
+# https://stackoverflow.com/questions/8526681/extract-random-effect-variances-from-lme4-mer-model-object
+# https://stats.stackexchange.com/questions/257985/how-can-i-derive-effect-sizes-in-lme4-and-describe-the-magnitude-of-fixed-effect
+
+effect.size <- function(model) {
+  
+  # random effects
+  sum.of.ran.eff.var <- sum(as.data.frame(VarCorr(model))$vcov)
+  denominator <- sqrt(sum.of.ran.eff.var)
+  
+  # fixed effects
+  n.fixed.effect <- length(fixef(model))
+  
+  # effect size
+  print("@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+  for (i in 1:n.fixed.effect) {
+    print("#################################")
+    print("Effect size for:")
+    print(fixef(model)[i]/denominator)
+  }
+}
+
 #### models ##### 
 
 # Given unique labels, the following lines are the same
-# (1 | continent) + (1 | country) + (1 | userid)
-# (1 | continent/country/userid)
+# (1 | continent) + (1 | country)
+# (1 | continent/country)
 
-model1 <- lmer(erstot ~ 1 + (1 | continent/country/userid), data = data, REML = FALSE)
+model1 <- lmer(erstot ~ gdppc_thous + (1 | continent/country), data = data, REML = FALSE)
 summary(model1)
+effect.size(model1)
 
-model2 <- lmer(erstot ~ age + gender + (1 | continent/country/userid), data = data, REML = FALSE)
+model2 <- lmer(erstot ~ gdppc_thous + age + gender + (1 | continent/country), data = data, REML = FALSE)
 summary(model2)
+effect.size(model2)
 
-model3 <- lmer(erstot ~ pdi + idv + mas + unc + lto + ind + (1 | continent/country/userid), data = data, REML = FALSE)
+model3 <- lmer(erstot ~ gdppc_thous + pdi + idv + mas + unc + lto + ind + (1 | continent/country), data = data, REML = FALSE)
 summary(model3)
+effect.size(model3)
 
-model4 <- lmer(erstot ~ age + gender + pdi + idv + mas + unc + lto + ind + (1 | continent/country/userid), data = data, REML = FALSE)
+model4 <- lmer(erstot ~ gdppc_thous + age + gender + pdi + idv + mas + unc + lto + ind + (1 | continent/country), data = data, REML = FALSE)
 summary(model4)
+effect.size(model4)
 
-model5 <- lmer(erstot ~ o + c + e + a + n + (1 | continent/country/userid), data = data, REML = FALSE)
+model5 <- lmer(erstot ~ gdppc_thous + o + c + e + a + n + (1 | continent/country), data = data, REML = FALSE)
 summary(model5)
+effect.size(model5)
 
-model6 <- lmer(erstot ~ age + gender + o + c + e + a + n + (1 | continent/country/userid), data = data, REML = FALSE)
+model6 <- lmer(erstot ~ gdppc_thous + age + gender + o + c + e + a + n + (1 | continent/country), data = data, REML = FALSE)
 summary(model6)
+effect.size(model6)
 
-model7 <- lmer(erstot ~ col.ind + dut.joy + dis.tru + (1 | continent/country/userid), data = data, REML = FALSE)
+model7 <- lmer(erstot ~ gdppc_thous + col.ind + dut.joy + dis.tru + (1 | continent/country), data = data, REML = FALSE)
 summary(model7)
+effect.size(model7)
 
-model8 <- lmer(erstot ~ age + gender + col.ind + dut.joy + dis.tru + (1 | continent/country/userid), data = data, REML = FALSE)
+model8 <- lmer(erstot ~ gdppc_thous + age + gender + col.ind + dut.joy + dis.tru + (1 | continent/country), data = data, REML = FALSE)
 summary(model8)
+effect.size(model8)
 
-model9 <- lmer(erstot ~ age + gender + pdi + idv + mas + unc + lto + ind + o + c + e + a + n + (1 | continent/country/userid), data = data, REML = FALSE)
+model9 <- lmer(erstot ~ gdppc_thous + age + gender + pdi + idv + mas + unc + lto + ind + o + c + e + a + n + (1 | continent/country), data = data, REML = FALSE)
 summary(model9)
+effect.size(model9)
 
-model10 <- lmer(erstot ~ age + gender + col.ind + dut.joy + dis.tru + o + c + e + a + n + (1 | continent/country/userid), data = data, REML = FALSE)
+model10 <- lmer(erstot ~ gdppc_thous+ age + gender + col.ind + dut.joy + dis.tru + o + c + e + a + n + (1 | continent/country), data = data, REML = FALSE)
 summary(model10)
+effect.size(model10)
 
 models <- list("model1" = model1, "model2" = model2, "model3" = model3, "model4" = model4, "model5" = model5, "model6" = model6, "model7" = model7, "model8" = model8, "model9" = model9, "model10" = model10)
 
